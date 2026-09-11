@@ -69,16 +69,23 @@ export async function CatalogueView({
   const hasMore = products.length < total;
 
   return (
-    <div className="grid gap-12 lg:grid-cols-[240px_1fr] lg:gap-16">
-      <div className="lg:order-2">
-        <ProductFilters
-          categories={categories}
-          sizes={filterOptions.sizes}
-          colours={filterOptions.colours}
-          priceBounds={priceBounds}
-          total={total}
-        />
+    /*
+      Three grid children, not one: the toolbar spans both columns, the
+      sidebar takes the 240px track, and the products take the rest. Nesting
+      them inside a single wrapper put the entire page in the 240px column,
+      which is what squashed the product cards.
+    */
+    <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <ProductFilters
+        categories={categories}
+        sizes={filterOptions.sizes}
+        colours={filterOptions.colours}
+        priceBounds={priceBounds}
+        total={total}
+      />
 
+      {/* min-w-0 lets the grid track shrink instead of overflowing. */}
+      <div className="min-w-0 lg:col-start-2">
         {products.length === 0 ? (
           <EmptyState
             illustration="search"

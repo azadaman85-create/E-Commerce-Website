@@ -298,8 +298,12 @@ export function ProductFilters({
 
   return (
     <>
-      {/* Toolbar: count, chips, sort, and the mobile filter trigger. */}
-      <div className="mb-8 flex flex-col gap-4">
+      {/*
+        Toolbar: count, chips, sort, and the mobile filter trigger.
+        Spans both columns so it sits above the sidebar and the grid rather
+        than being squeezed into the 240px sidebar track.
+      */}
+      <div className="mb-8 flex flex-col gap-4 lg:col-span-2">
         <div className="flex items-center justify-between gap-4">
           <p className="text-body-sm text-muted" aria-live="polite">
             {isPending ? "Updating…" : `${total} product${total === 1 ? "" : "s"}`}
@@ -381,8 +385,8 @@ export function ProductFilters({
         )}
       </div>
 
-      {/* Desktop sidebar. */}
-      <aside className="hidden lg:block">{panel}</aside>
+      {/* Desktop sidebar — grid column 1. */}
+      <aside className="hidden lg:col-start-1 lg:block">{panel}</aside>
 
       {/* Mobile bottom sheet. */}
       <AnimatePresence>
