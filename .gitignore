@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Environment — never commit real credentials.
+# The second pattern matters: `.env*.local` only matches names ENDING in
+# .local, so a copy such as .env.local.bak would slip through it.
+.env
+.env.local
+.env*.local
+.env*.local.*
+
+# Dependencies and build output live under mi-trends/, which has its own
+# .gitignore; these are a backstop in case the project is ever moved up.
+node_modules/
+.next/
