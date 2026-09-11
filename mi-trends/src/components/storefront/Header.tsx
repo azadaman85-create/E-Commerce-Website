@@ -13,13 +13,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useSettings } from "@/context/SettingsContext";
 import { useScrolled, useLockBodyScroll } from "@/hooks";
 import { SearchModal } from "@/components/storefront/SearchModal";
-import type { Category } from "@/types";
 
-interface HeaderProps {
-  categories: Category[];
-}
-
-export function Header({ categories }: HeaderProps) {
+export function Header() {
   const pathname = usePathname();
   const settings = useSettings();
   const scrolled = useScrolled(24);
@@ -65,16 +60,14 @@ export function Header({ categories }: HeaderProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // The three top-level sections, then a few categories for quick access.
+  // Exactly five destinations. Category links live in the PLP sidebar, not
+  // the header, so the top level stays about who is shopping rather than what.
   const navLinks = [
     { href: "/men", label: "Men" },
     { href: "/women", label: "Women" },
     { href: "/products", label: "Collection" },
-    ...categories.slice(0, 3).map((c) => ({
-      href: `/products?category=${c.slug}`,
-      label: c.name,
-    })),
     { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact Us" },
   ];
 
   const isSection = (href: string) =>
@@ -82,7 +75,7 @@ export function Header({ categories }: HeaderProps) {
 
   const iconButton =
     "relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-sm " +
-    "text-ink transition-colors hover:bg-ink/5";
+    "text-white/80 transition-colors hover:bg-white/10 hover:text-gold-light";
 
   return (
     <>
@@ -106,9 +99,11 @@ export function Header({ categories }: HeaderProps) {
         transition={{ duration: 0.3, ease: EASE_TACTILE }}
         className={cn(
           "sticky top-0 z-50 w-full border-b transition-colors duration-300",
+          // Dark throughout: the logo's own ground is #1b1c20, so anything
+          // lighter would frame it in a visible grey box.
           scrolled
-            ? "border-hairline bg-white/85 backdrop-blur-md"
-            : "border-transparent bg-bg",
+            ? "border-gold/25 bg-ink/90 backdrop-blur-md"
+            : "border-transparent bg-ink",
         )}
       >
         <div className="container-page flex h-full items-center justify-between gap-8">
@@ -122,21 +117,39 @@ export function Header({ categories }: HeaderProps) {
               <Menu className="h-5 w-5" aria-hidden />
             </button>
 
-            <Link href="/" className="flex shrink-0 items-center gap-3">
-              {settings.logo_url ? (
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-3"
+              aria-label={`${settings.site_name} — home`}
+            >
+              {/*
+                The supplied logo is a JPEG with a dark square ground. Masking
+                it to a circle drops the corners entirely, so it reads as an
+                emblem rather than a pasted-on tile.
+              */}
+              <motion.span
+                animate={{ height: scrolled ? 34 : 42, width: scrolled ? 34 : 42 }}
+                transition={{ duration: 0.3, ease: EASE_TACTILE }}
+                className="relative shrink-0 overflow-hidden rounded-full ring-1 ring-gold/40"
+              >
                 <Image
-                  src={settings.logo_url}
-                  alt={settings.site_name}
-                  width={140}
-                  height={32}
-                  className="h-7 w-auto object-contain"
+                  src={settings.logo_url ?? "/logo.jpeg"}
+                  alt=""
+                  fill
+                  sizes="48px"
+                  className="object-cover"
                   priority
                 />
-              ) : (
-                <span className="font-serif text-xl tracking-tight text-ink md:text-2xl">
+              </motion.span>
+
+              <span className="flex flex-col leading-none">
+                <span className="text-foil font-serif text-lg tracking-[0.08em] md:text-xl">
                   {settings.site_name}
                 </span>
-              )}
+                <span className="mt-0.5 hidden text-[9px] uppercase tracking-[0.28em] text-gold/60 sm:block">
+                  Clothing Brand
+                </span>
+              </span>
             </Link>
           </div>
 
@@ -147,8 +160,8 @@ export function Header({ categories }: HeaderProps) {
                 href={link.href}
                 aria-current={isSection(link.href) ? "page" : undefined}
                 className={cn(
-                  "text-caption uppercase tracking-[0.1em] transition-colors hover:text-ink",
-                  isSection(link.href) ? "text-ink" : "text-muted",
+                  "relative text-caption uppercase tracking-[0.1em] transition-colors hover:text-gold-light",
+                  isSection(link.href) ? "text-gold-light" : "text-white/70",
                 )}
               >
                 {link.label}
@@ -199,7 +212,7 @@ export function Header({ categories }: HeaderProps) {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 500, damping: 18 }}
-                    className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-white"
+                    className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-medium text-ink"
                   >
                     {itemCount > 99 ? "99+" : itemCount}
                   </motion.span>
@@ -218,10 +231,12 @@ export function Header({ categories }: HeaderProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-0 z-[80] bg-bg lg:hidden"
+            className="surface-dark fixed inset-0 z-[80] lg:hidden"
           >
             <div className="container-page flex h-20 items-center justify-between">
-              <span className="font-serif text-xl text-ink">{settings.site_name}</span>
+              <span className="text-foil font-serif text-xl">
+                {settings.site_name}
+              </span>
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
@@ -250,7 +265,7 @@ export function Header({ categories }: HeaderProps) {
                 >
                   <Link
                     href={link.href}
-                    className="block py-4 font-serif text-3xl text-ink transition-colors hover:text-accent"
+                    className="block py-4 font-serif text-3xl text-white transition-colors hover:text-gold-light"
                   >
                     {link.label}
                   </Link>

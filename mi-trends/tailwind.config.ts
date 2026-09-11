@@ -11,14 +11,29 @@ const config: Config = {
       colors: {
         bg: "#FAFAFA",
         cream: "#F5F5F0",
+        // Matches the logo's own background (sampled #1b1c20–#2b2c31), so the
+        // emblem sits on the dark header with no visible seam.
         ink: "#1A1A1A",
+        "ink-soft": "#24262A",
         muted: "#6B6B6B",
-        accent: {
-          DEFAULT: "#2563EB",
-          hover: "#1D4ED8",
+        /**
+         * Gold sampled from the brand mark: the ring reads #b39b66, with
+         * highlights up to #ffffdc. `deep` is the only one that clears WCAG AA
+         * for text on white (5.4:1) — the lighter tones are for dark grounds
+         * and decoration only.
+         */
+        gold: {
+          DEFAULT: "#B39B66",
+          light: "#D9C48F",
+          bright: "#E8D9AE",
+          deep: "#8A6D28",
         },
-        danger: "#DC2626",
-        success: "#16A34A",
+        accent: {
+          DEFAULT: "#8A6D28",
+          hover: "#6E5620",
+        },
+        danger: "#B4322B",
+        success: "#2F7D4F",
         hairline: "rgba(0,0,0,0.06)",
       },
       fontFamily: {
@@ -44,6 +59,7 @@ const config: Config = {
         content: "1440px",
       },
       boxShadow: {
+        gold: "0 0 0 1px rgba(179,155,102,0.35)",
         card: "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03)",
         "card-hover": "0 2px 8px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.06)",
         drawer: "-8px 0 40px rgba(0,0,0,0.08)",
@@ -64,11 +80,16 @@ const config: Config = {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
+        "gold-sweep": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+        },
       },
       animation: {
         shimmer: "shimmer 1.6s ease-in-out infinite",
         "pulse-badge": "pulse-badge 2s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
+        "gold-sweep": "gold-sweep 6s ease-in-out infinite",
       },
     },
   },

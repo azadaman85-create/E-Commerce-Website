@@ -87,20 +87,24 @@ export function Footer({ categories }: { categories: Category[] }) {
       <div className="container-page py-16 md:py-20">
         <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div>
-            <Link href="/" className="inline-flex items-center">
-              {settings.logo_inverted_url ? (
+            <Link href="/" className="inline-flex items-center gap-4">
+              <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full ring-1 ring-gold/40">
                 <Image
-                  src={settings.logo_inverted_url}
-                  alt={settings.site_name}
-                  width={160}
-                  height={36}
-                  className="h-8 w-auto object-contain"
+                  src={settings.logo_inverted_url ?? settings.logo_url ?? "/logo.jpeg"}
+                  alt=""
+                  fill
+                  sizes="56px"
+                  className="object-cover"
                 />
-              ) : (
-                <span className="font-serif text-2xl tracking-tight">
+              </span>
+              <span className="flex flex-col leading-none">
+                <span className="text-foil font-serif text-2xl tracking-[0.08em]">
                   {settings.site_name}
                 </span>
-              )}
+                <span className="mt-1 text-[10px] uppercase tracking-[0.28em] text-gold/60">
+                  Clothing Brand
+                </span>
+              </span>
             </Link>
 
             {settings.tagline && (

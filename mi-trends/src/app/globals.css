@@ -18,6 +18,25 @@
     @apply bg-bg text-ink font-sans;
     font-size: 1rem;
     line-height: 1.6;
+    /*
+     * Two very low-opacity radial washes plus a fine grain. Together they stop
+     * large light areas reading as flat white, which is most of what separates
+     * a premium surface from a default one. Kept under 4% opacity so it never
+     * competes with product photography.
+     */
+    background-image:
+      radial-gradient(
+        ellipse 80% 50% at 50% -10%,
+        rgba(179, 155, 102, 0.10),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 100% 0%,
+        rgba(26, 26, 26, 0.035),
+        transparent 55%
+      );
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -26,13 +45,13 @@
 
   /* Accessible focus ring — 2px offset ring in the accent colour. */
   :focus-visible {
-    outline: 2px solid #2563EB;
+    outline: 2px solid #8a6d28;
     outline-offset: 2px;
     border-radius: 2px;
   }
 
   ::selection {
-    background: #2563EB;
+    background: #8a6d28;
     color: #fff;
   }
 }
@@ -55,6 +74,16 @@
     @apply rounded-sm border border-hairline bg-white shadow-card;
   }
 
+  /* Dark section shell — carries the same ground as the logo. */
+  .surface-dark {
+    @apply bg-ink text-white;
+    background-image: radial-gradient(
+      ellipse 70% 60% at 50% 0%,
+      rgba(179, 155, 102, 0.13),
+      transparent 60%
+    );
+  }
+
   .skeleton {
     background-image: linear-gradient(
       90deg,
@@ -66,24 +95,60 @@
     @apply animate-shimmer rounded-sm;
   }
 
-  /* Shimmer sweep for primary CTAs — background-position shift on hover. */
+  /*
+   * Primary CTA: near-black with a gold sweep on hover. Dark-on-light gives
+   * the contrast a gold fill could not (gold on white is ~2.4:1, well under
+   * AA), while the sweep still reads as the brand colour.
+   */
   .cta-shimmer {
     background-image: linear-gradient(
       110deg,
-      #2563eb 0%,
-      #2563eb 40%,
-      #4f83f1 50%,
-      #2563eb 60%,
-      #2563eb 100%
+      #1a1a1a 0%,
+      #1a1a1a 44%,
+      #6b5a30 50%,
+      #1a1a1a 56%,
+      #1a1a1a 100%
     );
-    background-size: 220% 100%;
-    background-position: 100% 0;
-    transition: background-position 0.7s cubic-bezier(0.4, 0, 0.2, 1),
-      background-color 0.2s ease;
+    background-size: 240% 100%;
+    /*
+     * Both rest and hover land on a solid dark stretch; the gold band sits in
+     * the middle and is only visible while it sweeps across. Anything else
+     * leaves a stray gold sliver pinned to one edge at rest.
+     */
+    background-position: 0% 0;
+    transition: background-position 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .cta-shimmer:hover {
-    background-position: 0 0;
+    background-position: 100% 0;
+  }
+
+  /* Gold foil text, used for the wordmark on dark grounds. */
+  .text-foil {
+    background-image: linear-gradient(
+      100deg,
+      #9c854f 0%,
+      #d9c48f 25%,
+      #f0e6c8 45%,
+      #d9c48f 65%,
+      #a88f57 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    @apply animate-gold-sweep;
+  }
+
+  /* Hairline gold divider used between premium sections. */
+  .rule-gold {
+    height: 1px;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgba(179, 155, 102, 0.55),
+      transparent
+    );
   }
 
   .no-scrollbar::-webkit-scrollbar {

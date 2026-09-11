@@ -13,7 +13,7 @@ export default async function StorefrontLayout({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header categories={categories} />
+      <Header />
       <PageTransition>{children}</PageTransition>
       <Footer categories={categories} />
       <CartDrawer />
