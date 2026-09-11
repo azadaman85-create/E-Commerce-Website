@@ -6,10 +6,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/client";
+import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import type { Profile } from "@/types";
 
 interface AuthContextValue {
@@ -31,13 +31,28 @@ export function AuthProvider({
   children: React.ReactNode;
   initialProfile?: Profile | null;
 }) {
-  const supabase = useMemo(() => createClient(), []);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
   const [loading, setLoading] = useState(true);
+  const clientRef = useRef<SupabaseClient | null>(null);
+
+  /**
+   * supabase-js is ~196 kB and this provider wraps every page, so importing
+   * it statically would put that on the critical path of the whole site.
+   * Nothing on first paint depends on it — the header renders identically
+   * signed in or out — so it is fetched after mount instead.
+   */
+  const getSupabase = useCallback(async (): Promise<SupabaseClient> => {
+    if (!clientRef.current) {
+      const { createClient } = await import("@/lib/supabase/client");
+      clientRef.current = createClient();
+    }
+    return clientRef.current;
+  }, []);
 
   const loadProfile = useCallback(
     async (userId: string) => {
+      const supabase = await getSupabase();
       const { data } = await supabase
         .from("profiles")
         .select("*")
@@ -45,44 +60,53 @@ export function AuthProvider({
         .single();
       setProfile((data as Profile) ?? null);
     },
-    [supabase],
+    [getSupabase],
   );
 
   useEffect(() => {
     let active = true;
+    let unsubscribe: (() => void) | undefined;
 
-    supabase.auth.getSession().then(({ data }) => {
+    void (async () => {
+      const supabase = await getSupabase();
       if (!active) return;
+
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+
       setSession(data.session);
       if (data.session?.user) {
         void loadProfile(data.session.user.id);
       }
       setLoading(false);
-    });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      if (nextSession?.user) {
-        void loadProfile(nextSession.user.id);
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+        setSession(nextSession);
+        if (nextSession?.user) {
+          void loadProfile(nextSession.user.id);
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
+      });
+
+      unsubscribe = () => subscription.unsubscribe();
+    })();
 
     return () => {
       active = false;
-      subscription.unsubscribe();
+      unsubscribe?.();
     };
-  }, [supabase, loadProfile]);
+  }, [getSupabase, loadProfile]);
 
   const signOut = useCallback(async () => {
+    const supabase = await getSupabase();
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
-  }, [supabase]);
+  }, [getSupabase]);
 
   const refreshProfile = useCallback(async () => {
     if (session?.user) await loadProfile(session.user.id);

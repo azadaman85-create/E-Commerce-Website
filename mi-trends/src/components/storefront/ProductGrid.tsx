@@ -13,7 +13,7 @@ const QuickViewModal = dynamic(
     import("@/components/storefront/QuickViewModal").then((m) => m.QuickViewModal),
   { ssr: false },
 );
-import { useWishlist } from "@/hooks";
+import { useWishlist } from "@/hooks/useWishlist";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import type { ProductWithRelations } from "@/types";

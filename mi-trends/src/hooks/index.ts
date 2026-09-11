@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/context/AuthContext";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Delays a value until it has been stable for `delay` ms. */
 export function useDebounce<T>(value: T, delay = 300): T {
@@ -134,77 +132,7 @@ export function useRecentSearches(limit = 5) {
   return { recent, push, clear };
 }
 
-/**
- * Wishlist backed by Supabase. Only meaningful for signed-in users —
- * callers should prompt for sign-in when `user` is null.
- */
-export function useWishlist() {
-  const { user } = useAuth();
-  const supabase = useMemo(() => createClient(), []);
-  const [productIds, setProductIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!user) {
-      setProductIds(new Set());
-      setLoading(false);
-      return;
-    }
-    const { data } = await supabase
-      .from("wishlist")
-      .select("product_id")
-      .eq("user_id", user.id);
-    setProductIds(new Set((data ?? []).map((r: { product_id: string }) => r.product_id)));
-    setLoading(false);
-  }, [supabase, user]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const toggle = useCallback(
-    async (productId: string): Promise<"added" | "removed" | "unauthenticated"> => {
-      if (!user) return "unauthenticated";
-
-      const isSaved = productIds.has(productId);
-      // Optimistic — reverted below if the write fails.
-      setProductIds((prev) => {
-        const next = new Set(prev);
-        if (isSaved) next.delete(productId);
-        else next.add(productId);
-        return next;
-      });
-
-      const { error } = isSaved
-        ? await supabase
-            .from("wishlist")
-            .delete()
-            .eq("user_id", user.id)
-            .eq("product_id", productId)
-        : await supabase
-            .from("wishlist")
-            .insert({ user_id: user.id, product_id: productId });
-
-      if (error) {
-        setProductIds((prev) => {
-          const next = new Set(prev);
-          if (isSaved) next.add(productId);
-          else next.delete(productId);
-          return next;
-        });
-        throw error;
-      }
-
-      return isSaved ? "removed" : "added";
-    },
-    [supabase, user, productIds],
-  );
-
-  return {
-    productIds,
-    loading,
-    isSaved: (id: string) => productIds.has(id),
-    toggle,
-    reload: load,
-  };
-}
+// useWishlist deliberately is NOT re-exported here. A static re-export still
+// puts supabase-js in the graph of anything importing this barrel, which is
+// how ~196 kB ended up on every page that used useScrolled.
+// Import it directly: import { useWishlist } from "@/hooks/useWishlist";

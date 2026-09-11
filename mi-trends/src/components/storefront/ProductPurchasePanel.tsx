@@ -8,7 +8,7 @@ import { Stars } from "@/components/ui/Stars";
 import { useCart } from "@/context/CartContext";
 import { useCurrency } from "@/context/SettingsContext";
 import { useToast } from "@/components/ui/Toast";
-import { useWishlist } from "@/hooks";
+import { useWishlist } from "@/hooks/useWishlist";
 import { cn, discountPercent, effectivePrice, isOnSale } from "@/lib/utils";
 import { EASE_TACTILE } from "@/lib/motion";
 import type { ProductWithRelations, VariantOptionValue } from "@/types";
