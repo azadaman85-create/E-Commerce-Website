@@ -42,11 +42,19 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  /*
+   * Only the routes that actually need a session.
+   *
+   * This previously ran on every request, and `auth.getUser()` is a network
+   * call to Supabase — roughly a second on this project — so every public page
+   * view paid for an auth check it never used. Anonymous visitors browsing the
+   * catalogue now skip it entirely; @supabase/ssr still refreshes the session
+   * on the client, and on any of the routes below.
+   */
   matcher: [
-    /*
-     * Run on everything except static assets and image files, so the session
-     * cookie stays fresh across the whole app.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|woff2?)$).*)",
+    "/admin/:path*",
+    "/account/:path*",
+    "/checkout/:path*",
+    "/auth",
   ],
 };

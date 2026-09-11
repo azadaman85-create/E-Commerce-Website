@@ -1,4 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
+import { createPublicClient } from "@/lib/supabase/public";
 import {
   demoCategories,
   demoHeroSlides,
@@ -19,6 +21,7 @@ import type {
   Category,
   Gender,
   HeroSlide,
+  PageSeo,
   Product,
   ProductWithRelations,
   Review,
@@ -31,6 +34,36 @@ import type {
 
 export { buildCategoryTree } from "@/lib/categories";
 
+/**
+ * One cheap HEAD count, cached, answering "has this project been seeded yet?".
+ *
+ * Without it every product query on a page paid a full round trip only to
+ * discover the catalogue is empty and fall back to the demo data — six or more
+ * such trips on the homepage alone, at roughly a second each.
+ */
+const catalogueCount = unstable_cache(
+  async (): Promise<number> => {
+    const supabase = createPublicClient();
+    const { count } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active");
+    return count ?? 0;
+  },
+  ["catalogue-count"],
+  { revalidate: 30, tags: ["catalogue"] },
+);
+
+/**
+ * True when the storefront should serve the demo catalogue: either Supabase is
+ * unconfigured, or (in development only) it is configured but unseeded.
+ */
+const serveDemoCatalogue = cache(async (): Promise<boolean> => {
+  if (isDemoMode()) return true;
+  if (process.env.NODE_ENV === "production") return false;
+  return shouldFallBackToDemo(await catalogueCount());
+});
+
 const PRODUCT_CARD_SELECT =
   "id, title, slug, price, sale_price, sale_start, sale_end, sku, stock_quantity, " +
   "track_inventory, allow_backorders, status, short_description, category_id, gender, " +
@@ -38,47 +71,90 @@ const PRODUCT_CARD_SELECT =
   "og_image_url, product_images(id, product_id, image_url, sort_order, alt_text), " +
   "categories(id, name, slug)";
 
-export async function getSiteSettings(): Promise<SiteSettings | null> {
+/**
+ * Settings are read on essentially every page — previously four times per
+ * homepage request, once each for the two layouts' metadata and bodies. With a
+ * ~0.9s round trip that alone dominated the response. `cache` dedupes within a
+ * render, `unstable_cache` holds it across requests.
+ */
+const loadSiteSettings = unstable_cache(
+  async (): Promise<SiteSettings | null> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("site_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    return (data as unknown as SiteSettings) ?? null;
+  },
+  ["site-settings"],
+  { revalidate: 120, tags: ["settings"] },
+);
+
+export const getSiteSettings = cache(async (): Promise<SiteSettings | null> => {
   if (isDemoMode()) return demoSettings;
+  return (await loadSiteSettings()) ?? demoSettings;
+});
 
-  const supabase = createClient();
-  const { data } = await supabase.from("site_settings").select("*").limit(1).maybeSingle();
-  return (data as SiteSettings) ?? demoSettings;
-}
+const loadSeoSettings = unstable_cache(
+  async (): Promise<SeoSettings | null> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("seo_settings")
+      .select("*")
+      .limit(1)
+      .maybeSingle();
+    return (data as unknown as SeoSettings) ?? null;
+  },
+  ["seo-settings"],
+  { revalidate: 300, tags: ["settings"] },
+);
 
-export async function getSeoSettings(): Promise<SeoSettings | null> {
+export const getSeoSettings = cache(async (): Promise<SeoSettings | null> => {
   if (isDemoMode()) return null;
+  return loadSeoSettings();
+});
 
-  const supabase = createClient();
-  const { data } = await supabase.from("seo_settings").select("*").limit(1).maybeSingle();
-  return (data as SeoSettings) ?? null;
-}
+const loadPageSeo = unstable_cache(
+  async (slug: string): Promise<PageSeo | null> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("page_seo")
+      .select("*")
+      .eq("page_slug", slug)
+      .maybeSingle();
+    return (data as unknown as PageSeo) ?? null;
+  },
+  ["page-seo"],
+  { revalidate: 300, tags: ["settings"] },
+);
 
-export async function getPageSeo(slug: string) {
-  if (isDemoMode()) return null;
+export const getPageSeo = cache(
+  async (slug: string): Promise<PageSeo | null> => {
+    if (isDemoMode()) return null;
+    return loadPageSeo(slug);
+  },
+);
 
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("page_seo")
-    .select("*")
-    .eq("page_slug", slug)
-    .maybeSingle();
-  return data;
-}
+const loadCategories = unstable_cache(
+  async (): Promise<Category[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("categories")
+      .select("*")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+    return (data as Category[]) ?? [];
+  },
+  ["categories"],
+  { revalidate: 120, tags: ["catalogue"] },
+);
 
-export async function getCategories(): Promise<Category[]> {
+export const getCategories = cache(async (): Promise<Category[]> => {
   if (isDemoMode()) return demoCategories;
-
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("categories")
-    .select("*")
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-
-  const rows = (data as Category[]) ?? [];
+  const rows = await loadCategories();
   return rows.length > 0 ? rows : demoCategories;
-}
+});
 
 /** Categories that actually have a product in the given section. */
 export async function getCategoriesForGender(gender?: Gender): Promise<Category[]> {
@@ -91,25 +167,31 @@ export async function getCategoriesForGender(gender?: Gender): Promise<Category[
   return filtered.length > 0 ? filtered : categories;
 }
 
-export async function getHeroSlides(): Promise<HeroSlide[]> {
+const loadHeroSlides = unstable_cache(
+  async (): Promise<HeroSlide[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("hero_slides")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    return (data as HeroSlide[]) ?? [];
+  },
+  ["hero_slides"],
+  { revalidate: 120, tags: ["content"] },
+);
+
+export const getHeroSlides = cache(async (): Promise<HeroSlide[]> => {
   if (isDemoMode()) return demoHeroSlides;
-
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("hero_slides")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-
-  const rows = (data as HeroSlide[]) ?? [];
+  const rows = await loadHeroSlides();
   return rows.length > 0 ? rows : demoHeroSlides;
-}
+});
 
 export async function getNewArrivals(
   limit = 8,
   gender?: Gender,
 ): Promise<ProductWithRelations[]> {
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     return demoProducts
       .filter((p) => matchesGender(p.gender, gender))
       .slice()
@@ -120,7 +202,7 @@ export async function getNewArrivals(
       .slice(0, limit);
   }
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   let query = supabase
     .from("products")
     .select(PRODUCT_CARD_SELECT)
@@ -149,7 +231,7 @@ export async function getBestSellers(
   limit = 8,
   gender?: Gender,
 ): Promise<ProductWithRelations[]> {
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     return demoProducts
       .filter((p) => matchesGender(p.gender, gender))
       .slice()
@@ -157,7 +239,7 @@ export async function getBestSellers(
       .slice(0, limit);
   }
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   let query = supabase
     .from("products")
     .select(PRODUCT_CARD_SELECT)
@@ -182,9 +264,9 @@ export async function getBestSellers(
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductWithRelations | null> {
-  if (isDemoMode()) return getDemoProductBySlug(slug);
+  if (await serveDemoCatalogue()) return getDemoProductBySlug(slug);
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("products")
     .select(
@@ -222,7 +304,7 @@ export async function getRelatedProducts(
   excludeId: string,
   limit = 8,
 ): Promise<ProductWithRelations[]> {
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     const sameCategory = demoProducts.filter(
       (p) => p.id !== excludeId && p.category_id === categoryId,
     );
@@ -233,7 +315,7 @@ export async function getRelatedProducts(
     return [...sameCategory, ...filler].slice(0, limit);
   }
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   let query = supabase
     .from("products")
     .select(PRODUCT_CARD_SELECT)
@@ -277,7 +359,7 @@ function summarise(reviews: Review[], declaredTotal?: number): ReviewSummary {
 }
 
 export async function getProductReviews(productId: string): Promise<ReviewSummary> {
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     const reviews = getDemoReviews(productId);
     const rating = getDemoRatings().get(productId);
     const summary = summarise(reviews);
@@ -287,7 +369,7 @@ export async function getProductReviews(productId: string): Promise<ReviewSummar
       : summary;
   }
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("reviews")
     .select("*")
@@ -303,7 +385,7 @@ export async function getRatingsFor(
   const map = new Map<string, { average: number; count: number }>();
   if (productIds.length === 0) return map;
 
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     const all = getDemoRatings();
     for (const id of productIds) {
       const entry = all.get(id);
@@ -312,7 +394,7 @@ export async function getRatingsFor(
     return map;
   }
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("reviews")
     .select("product_id, rating")
@@ -332,69 +414,92 @@ export async function getRatingsFor(
   return map;
 }
 
-export async function getShippingMethods(): Promise<ShippingMethod[]> {
+const loadShippingMethods = unstable_cache(
+  async (): Promise<ShippingMethod[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("shipping_methods")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    return (data as ShippingMethod[]) ?? [];
+  },
+  ["shipping_methods"],
+  { revalidate: 120, tags: ["content"] },
+);
+
+export const getShippingMethods = cache(async (): Promise<ShippingMethod[]> => {
   if (isDemoMode()) return demoShippingMethods;
-
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("shipping_methods")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-
-  const rows = (data as ShippingMethod[]) ?? [];
+  const rows = await loadShippingMethods();
   return rows.length > 0 ? rows : demoShippingMethods;
-}
+});
 
-export async function getTestimonials(): Promise<Testimonial[]> {
+const loadTestimonials = unstable_cache(
+  async (): Promise<Testimonial[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("testimonials")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    return (data as Testimonial[]) ?? [];
+  },
+  ["testimonials"],
+  { revalidate: 120, tags: ["content"] },
+);
+
+export const getTestimonials = cache(async (): Promise<Testimonial[]> => {
   if (isDemoMode()) return demoTestimonials;
-
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("testimonials")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-
-  const rows = (data as Testimonial[]) ?? [];
+  const rows = await loadTestimonials();
   return rows.length > 0 ? rows : demoTestimonials;
-}
+});
 
 /**
  * Promotional banners that are active *and* inside their scheduled window.
  * The date filter runs here rather than in SQL so a banner with no dates set
  * is treated as always-on.
  */
-export async function getActiveBanners(): Promise<Banner[]> {
+const loadBanners = unstable_cache(
+  async (): Promise<Banner[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase.from("banners").select("*").eq("is_active", true);
+    return (data as Banner[]) ?? [];
+  },
+  ["banners"],
+  { revalidate: 120, tags: ["content"] },
+);
+
+export const getActiveBanners = cache(async (): Promise<Banner[]> => {
   if (isDemoMode()) return [];
 
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("banners")
-    .select("*")
-    .eq("is_active", true);
-
+  const data = await loadBanners();
   const now = Date.now();
-  return ((data as Banner[]) ?? []).filter((banner) => {
+  return data.filter((banner) => {
     if (banner.starts_at && new Date(banner.starts_at).getTime() > now) return false;
     if (banner.ends_at && new Date(banner.ends_at).getTime() < now) return false;
     return true;
   });
-}
+});
 
-export async function getSocialPosts(): Promise<SocialPost[]> {
+const loadSocialPosts = unstable_cache(
+  async (): Promise<SocialPost[]> => {
+    const supabase = createPublicClient();
+    const { data } = await supabase
+      .from("social_posts")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    return (data as SocialPost[]) ?? [];
+  },
+  ["social_posts"],
+  { revalidate: 120, tags: ["content"] },
+);
+
+export const getSocialPosts = cache(async (): Promise<SocialPost[]> => {
   if (isDemoMode()) return demoSocialPosts;
-
-  const supabase = createClient();
-  const { data } = await supabase
-    .from("social_posts")
-    .select("*")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-
-  const rows = (data as SocialPost[]) ?? [];
+  const rows = await loadSocialPosts();
   return rows.length > 0 ? rows : demoSocialPosts;
-}
+});
 
 export interface ProductFilters {
   category?: string;
@@ -520,9 +625,9 @@ function listDemoProducts(filters: ProductFilters): ProductListResult {
 export async function listProducts(
   filters: ProductFilters,
 ): Promise<ProductListResult> {
-  if (isDemoMode()) return listDemoProducts(filters);
+  if (await serveDemoCatalogue()) return listDemoProducts(filters);
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   const perPage = filters.perPage ?? 12;
   const page = Math.max(1, filters.page ?? 1);
 
@@ -680,7 +785,7 @@ export async function getFilterOptions(gender?: Gender): Promise<{
   const sizes = new Set<string>();
   const colours = new Set<string>();
 
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     for (const product of demoProducts) {
       if (!matchesGender(product.gender, gender)) continue;
       for (const variant of product.product_variants ?? []) {
@@ -691,7 +796,7 @@ export async function getFilterOptions(gender?: Gender): Promise<{
       }
     }
   } else {
-    const supabase = createClient();
+    const supabase = createPublicClient();
     const { data } = await supabase.from("product_variants").select("option_values");
 
     for (const row of (data as {
@@ -723,11 +828,11 @@ export async function getFilterOptions(gender?: Gender): Promise<{
 export async function searchProducts(term: string, limit = 8): Promise<Product[]> {
   if (!term.trim()) return [];
 
-  if (isDemoMode()) {
+  if (await serveDemoCatalogue()) {
     return listDemoProducts({ search: term.trim(), perPage: limit }).products;
   }
 
-  const supabase = createClient();
+  const supabase = createPublicClient();
   const safe = term.replace(/[%,()]/g, " ").trim();
   const { data } = await supabase
     .from("products")
