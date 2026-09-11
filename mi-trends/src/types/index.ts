@@ -8,6 +8,12 @@ export type FulfillmentStatus =
   | "delivered"
   | "cancelled";
 export type CouponType = "percentage" | "fixed";
+export type ReturnStatus =
+  | "requested"
+  | "approved"
+  | "rejected"
+  | "received"
+  | "refunded";
 /** Which section of the store a product belongs to. */
 export type Gender = "men" | "women" | "unisex";
 
@@ -356,6 +362,29 @@ export interface ContactMessage {
   message: string;
   is_read: boolean;
   created_at: string;
+}
+
+export interface ReturnItem {
+  order_item_id: string;
+  title: string;
+  variant_info: VariantOptionValue[] | null;
+  quantity: number;
+}
+
+export interface ReturnRequest {
+  id: string;
+  order_id: string;
+  user_id: string | null;
+  order_number: string;
+  email: string;
+  reason: string;
+  comment: string | null;
+  items: ReturnItem[];
+  refund_amount: number;
+  status: ReturnStatus;
+  admin_note: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /** A line in the client-side cart. Persisted to localStorage. */

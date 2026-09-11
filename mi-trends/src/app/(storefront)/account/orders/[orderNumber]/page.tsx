@@ -6,9 +6,11 @@ import { ChevronLeft, Truck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, FulfillmentBadge } from "@/components/ui/Badge";
 import { OrderTimeline } from "@/components/storefront/OrderTimeline";
+import { ReturnRequest } from "@/components/storefront/ReturnRequest";
+import { checkReturnEligibility } from "@/lib/returns";
 import { getSiteSettings } from "@/lib/queries";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { OrderWithItems } from "@/types";
+import type { OrderWithItems, ReturnRequest as ReturnRecord } from "@/types";
 
 export const metadata: Metadata = {
   title: "Order detail",
@@ -34,6 +36,21 @@ export default async function OrderDetailPage({
 
   const order = data as OrderWithItems | null;
   if (!order) notFound();
+
+  // RLS scopes this to the customer's own returns.
+  const { data: returnRows } = await supabase
+    .from("returns")
+    .select("*")
+    .eq("order_id", order.id)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  const existingReturn = ((returnRows as ReturnRecord[]) ?? [])[0] ?? null;
+  const openStatuses = ["requested", "approved"];
+  const eligibility = checkReturnEligibility(
+    order,
+    existingReturn !== null && openStatuses.includes(existingReturn.status),
+  );
 
   const money = (n: number) =>
     formatCurrency(
@@ -198,6 +215,13 @@ export default async function OrderDetailPage({
               {order.shipping_address.country}
             </address>
           </div>
+
+          <ReturnRequest
+            orderId={order.id}
+            items={order.order_items}
+            eligibility={eligibility}
+            existing={existingReturn}
+          />
         </aside>
       </div>
     </div>
