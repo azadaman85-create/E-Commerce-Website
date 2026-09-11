@@ -15,6 +15,7 @@ import {
 } from "@/lib/demo";
 import { effectivePrice } from "@/lib/utils";
 import type {
+  Banner,
   Category,
   Gender,
   HeroSlide,
@@ -357,6 +358,28 @@ export async function getTestimonials(): Promise<Testimonial[]> {
 
   const rows = (data as Testimonial[]) ?? [];
   return rows.length > 0 ? rows : demoTestimonials;
+}
+
+/**
+ * Promotional banners that are active *and* inside their scheduled window.
+ * The date filter runs here rather than in SQL so a banner with no dates set
+ * is treated as always-on.
+ */
+export async function getActiveBanners(): Promise<Banner[]> {
+  if (isDemoMode()) return [];
+
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("banners")
+    .select("*")
+    .eq("is_active", true);
+
+  const now = Date.now();
+  return ((data as Banner[]) ?? []).filter((banner) => {
+    if (banner.starts_at && new Date(banner.starts_at).getTime() > now) return false;
+    if (banner.ends_at && new Date(banner.ends_at).getTime() < now) return false;
+    return true;
+  });
 }
 
 export async function getSocialPosts(): Promise<SocialPost[]> {

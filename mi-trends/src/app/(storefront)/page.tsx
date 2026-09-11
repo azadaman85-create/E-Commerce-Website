@@ -5,10 +5,12 @@ import { ProductGrid } from "@/components/storefront/ProductGrid";
 import { CategoryRow } from "@/components/storefront/CategoryRow";
 import { GenderSplit } from "@/components/storefront/GenderSplit";
 import { PromoBanner } from "@/components/storefront/PromoBanner";
+import { PromoBanners } from "@/components/storefront/PromoBanners";
 import { Testimonials, TrustBadges } from "@/components/storefront/Testimonials";
 import { SocialFeed } from "@/components/storefront/SocialFeed";
 import { NewsletterSection } from "@/components/storefront/NewsletterSection";
 import {
+  getActiveBanners,
   getBestSellers,
   getCategories,
   getHeroSlides,
@@ -47,6 +49,7 @@ export default async function HomePage() {
     womensPicks,
     testimonials,
     socialPosts,
+    banners,
     settings,
   ] = await Promise.all([
     getHeroSlides(),
@@ -57,6 +60,7 @@ export default async function HomePage() {
     getBestSellers(4, "women"),
     getTestimonials(),
     getSocialPosts(),
+    getActiveBanners(),
     getSiteSettings(),
   ]);
 
@@ -134,6 +138,12 @@ export default async function HomePage() {
       </section>
 
       <PromoBanner />
+
+      {banners.length > 0 && (
+        <section className="container-page section-y">
+          <PromoBanners banners={banners} />
+        </section>
+      )}
 
       <section className="container-page section-y">
         <SectionHeading

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Printer, Save } from "lucide-react";
+import { ChevronLeft, Package, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { FulfillmentBadge, PaymentBadge } from "@/components/ui/Badge";
@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/admin/AdminUI";
 import { OrderTimeline } from "@/components/storefront/OrderTimeline";
 import { useToast } from "@/components/ui/Toast";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type {
   FulfillmentStatus,
   OrderTimelineEntry,
@@ -60,8 +60,20 @@ export function OrderDetail({
   const [carrier, setCarrier] = useState(order.tracking_carrier ?? "");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [printMode, setPrintMode] = useState<"invoice" | "packing-slip">("invoice");
+
+  /**
+   * Switches the document into the requested print layout, waits for React to
+   * paint it, then opens the print dialog. A packing slip deliberately omits
+   * prices — it goes in the box, where the customer's card total has no place.
+   */
+  function printDocument(mode: "invoice" | "packing-slip") {
+    setPrintMode(mode);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
+  }
 
   const money = (n: number) => formatCurrency(Number(n), currencySymbol, currencyCode);
+  const packingSlip = printMode === "packing-slip";
 
   async function saveChanges() {
     setSaving(true);
@@ -130,9 +142,13 @@ export function OrderDetail({
         description={`Placed ${formatDate(order.created_at, true)}`}
         action={
           <div className="no-print flex gap-3">
-            <Button variant="secondary" onClick={() => window.print()}>
+            <Button variant="secondary" onClick={() => printDocument("invoice")}>
               <Printer className="h-4 w-4" aria-hidden />
               Print invoice
+            </Button>
+            <Button variant="secondary" onClick={() => printDocument("packing-slip")}>
+              <Package className="h-4 w-4" aria-hidden />
+              Packing slip
             </Button>
             <Button onClick={saveChanges} loading={saving}>
               <Save className="h-4 w-4" aria-hidden />
@@ -166,7 +182,13 @@ export function OrderDetail({
                       <th
                         key={header}
                         scope="col"
-                        className="pb-3 text-caption uppercase tracking-[0.1em] text-muted"
+                        className={cn(
+                          "pb-3 text-caption uppercase tracking-[0.1em] text-muted",
+                          // Prices are omitted from a packing slip.
+                          packingSlip &&
+                            (header === "Unit" || header === "Total") &&
+                            "print:hidden",
+                        )}
                       >
                         {header}
                       </th>
@@ -200,10 +222,20 @@ export function OrderDetail({
                       <td className="py-3 pr-4 text-body-sm tabular-nums text-ink">
                         {item.quantity}
                       </td>
-                      <td className="py-3 pr-4 text-body-sm tabular-nums text-muted">
+                      <td
+                        className={cn(
+                          "py-3 pr-4 text-body-sm tabular-nums text-muted",
+                          packingSlip && "print:hidden",
+                        )}
+                      >
                         {money(item.unit_price)}
                       </td>
-                      <td className="py-3 text-body-sm tabular-nums text-ink">
+                      <td
+                        className={cn(
+                          "py-3 text-body-sm tabular-nums text-ink",
+                          packingSlip && "print:hidden",
+                        )}
+                      >
                         {money(item.line_total)}
                       </td>
                     </tr>
@@ -212,7 +244,12 @@ export function OrderDetail({
               </table>
             </div>
 
-            <dl className="mt-8 flex flex-col gap-3 border-t border-hairline pt-6 text-body-sm">
+            <dl
+              className={cn(
+                "mt-8 flex flex-col gap-3 border-t border-hairline pt-6 text-body-sm",
+                packingSlip && "print:hidden",
+              )}
+            >
               <div className="flex justify-between">
                 <dt className="text-muted">Subtotal</dt>
                 <dd className="text-ink tabular-nums">{money(order.subtotal)}</dd>
@@ -437,7 +474,8 @@ export function OrderDetail({
       {/* Print-only header so a printed page identifies itself. */}
       <div className="hidden print:mt-8 print:block print:border-t print:border-hairline print:pt-4">
         <p className="text-caption normal-case tracking-normal text-muted">
-          {siteName} · Invoice {order.order_number} · {formatDate(order.created_at)}
+          {siteName} · {packingSlip ? "Packing slip" : "Invoice"} {order.order_number} ·{" "}
+          {formatDate(order.created_at)}
         </p>
       </div>
     </>
