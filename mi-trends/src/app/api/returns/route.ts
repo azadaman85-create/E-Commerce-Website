@@ -3,8 +3,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { checkReturnEligibility } from "@/lib/returns";
+import { sendReturnReceived } from "@/lib/email/notify";
 import { round2 } from "@/lib/utils";
-import type { OrderWithItems, ReturnItem } from "@/types";
+import type { OrderWithItems, ReturnItem, ReturnRequest } from "@/types";
 
 const schema = z.object({
   orderId: z.string().uuid(),
@@ -137,6 +138,8 @@ export async function POST(request: Request) {
       { status: duplicate ? 409 : 500 },
     );
   }
+
+  await sendReturnReceived(data as ReturnRequest);
 
   return NextResponse.json({ request: data });
 }

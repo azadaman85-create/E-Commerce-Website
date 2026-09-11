@@ -79,6 +79,8 @@ export function OrderDetail({
     setSaving(true);
     try {
       const statusChanged = fulfillment !== order.fulfillment_status;
+      const justShipped =
+        fulfillment === "shipped" && order.fulfillment_status !== "shipped";
 
       const { error } = await supabase
         .from("orders")
@@ -118,7 +120,25 @@ export function OrderDetail({
         tracking_carrier: carrier.trim() || null,
       });
       setNote("");
-      toast.success("Order updated");
+
+      // Supabase cannot send mail, so the notification goes through an
+      // admin-only route once the write has actually landed.
+      if (justShipped) {
+        const res = await fetch("/api/orders/notify-shipped", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: order.id }),
+        });
+        if (res.ok) {
+          toast.success("Order updated", "Shipping notification sent.");
+        } else {
+          // The status change succeeded; only the email did not.
+          toast.info("Order updated", "Couldn't send the shipping email.");
+        }
+      } else {
+        toast.success("Order updated");
+      }
+
       router.refresh();
     } finally {
       setSaving(false);

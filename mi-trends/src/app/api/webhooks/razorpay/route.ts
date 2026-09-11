@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyWebhookSignature } from "@/lib/razorpay";
+import { sendOrderConfirmation } from "@/lib/email/notify";
 
 // Razorpay signs the raw body, so this route must not be pre-parsed or cached.
 export const dynamic = "force-dynamic";
@@ -76,6 +77,10 @@ export async function POST(request: Request) {
         status: "processing",
         note: `Payment captured via webhook (${payment.id ?? "unknown"})`,
       });
+
+      // Only reached when this webhook was the first to mark the order paid;
+      // the early return above covers the verify route having got there first.
+      await sendOrderConfirmation(order.id);
       break;
     }
 

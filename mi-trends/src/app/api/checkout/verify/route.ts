@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyPaymentSignature } from "@/lib/razorpay";
+import { sendOrderConfirmation } from "@/lib/email/notify";
 
 const schema = z.object({
   orderId: z.string().uuid(),
@@ -73,6 +74,10 @@ export async function POST(request: Request) {
       status: "processing",
       note: `Payment captured (${razorpayPaymentId})`,
     });
+
+    // Guarded by the payment_status check above, so the webhook arriving
+    // later cannot send a second copy.
+    await sendOrderConfirmation(order.id);
   }
 
   return NextResponse.json({ ok: true, orderNumber: order.order_number });
