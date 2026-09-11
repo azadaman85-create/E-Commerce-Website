@@ -78,11 +78,27 @@ async function select(table, query = "select=*&limit=1") {
 
 async function insert(table, rows) {
   if (rows.length === 0) return { ok: true, body: [] };
-  return rest(table, {
+
+  // PostgREST rejects a bulk insert whose objects have differing keys
+  // ("PGRST102: All object keys must match"), so fill the gaps with null
+  // rather than leaving a key off some rows.
+  const keys = [...new Set(rows.flatMap((r) => Object.keys(r)))];
+  const normalised = rows.map((row) =>
+    Object.fromEntries(keys.map((k) => [k, row[k] ?? null])),
+  );
+
+  const res = await rest(table, {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify(rows),
+    body: JSON.stringify(normalised),
   });
+
+  // Surface failures instead of skipping past them — a silent insert failure
+  // is how shipping_methods ended up empty while the seeder reported success.
+  if (!res.ok) {
+    fail(`${table}: ${JSON.stringify(res.body)}`);
+  }
+  return res;
 }
 
 async function count(table) {
@@ -441,8 +457,8 @@ async function main() {
   if ((await count("shipping_methods")) === 0) {
     await insert("shipping_methods", [
       { name: "Standard", price: 99, estimated_delivery: "4–6 business days", free_shipping_threshold: 2000, sort_order: 0 },
-      { name: "Express", price: 249, estimated_delivery: "2–3 business days", sort_order: 1 },
-      { name: "Next Day", price: 499, estimated_delivery: "Next business day", sort_order: 2 },
+      { name: "Express", price: 249, estimated_delivery: "2–3 business days", free_shipping_threshold: null, sort_order: 1 },
+      { name: "Next Day", price: 499, estimated_delivery: "Next business day", free_shipping_threshold: null, sort_order: 2 },
     ]);
     console.log("  ✓ shipping_methods");
   }
@@ -479,11 +495,23 @@ async function main() {
 
   // -- summary ------------------------------------------------------------
   console.log("\n  Row counts:");
+  const empties = [];
   for (const t of ["categories", "products", "product_images", "product_variants",
-                   "hero_slides", "shipping_methods", "coupons", "testimonials"]) {
-    console.log(`    ${t.padEnd(20)} ${await count(t)}`);
+                   "hero_slides", "shipping_methods", "coupons", "testimonials",
+                   "social_posts", "page_seo"]) {
+    const n = await count(t);
+    console.log(`    ${t.padEnd(20)} ${n}${n === 0 ? "   <-- EMPTY" : ""}`);
+    if (n === 0) empties.push(t);
   }
-  console.log("\n  Done. Reload http://localhost:3000\n");
+
+  if (empties.length > 0) {
+    console.log(
+      `\n  Warning: ${empties.join(", ")} came back empty.` +
+        "\n  Checkout needs at least one shipping method to work.\n",
+    );
+  } else {
+    console.log("\n  Done. Reload http://localhost:3000\n");
+  }
 }
 
 main().catch((err) => fail(err.message));
