@@ -22,6 +22,7 @@ import {
   getTestimonials,
 } from "@/lib/queries";
 import { absoluteUrl } from "@/lib/utils";
+import { jsonLd } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function HomePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(orgSchema) }}
       />
 
       <Hero slides={slides} />

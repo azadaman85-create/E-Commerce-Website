@@ -4,6 +4,7 @@ import { Accordion } from "@/components/ui/Accordion";
 import { ButtonLink } from "@/components/ui/Button";
 import { getPageSeo } from "@/lib/queries";
 import { absoluteUrl } from "@/lib/utils";
+import { jsonLd } from "@/lib/sanitize";
 
 export const revalidate = 3600;
 
@@ -72,7 +73,7 @@ export default function FaqPage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(schema) }}
       />
 
       <div className="container-page py-12 md:py-16">

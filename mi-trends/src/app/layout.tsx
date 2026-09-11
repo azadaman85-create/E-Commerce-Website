@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { getSeoSettings, getSiteSettings } from "@/lib/queries";
 import { absoluteUrl } from "@/lib/utils";
+import { safeAnalyticsId } from "@/lib/sanitize";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -67,29 +68,34 @@ export default async function RootLayout({
 }) {
   const [settings, seo] = await Promise.all([getSiteSettings(), getSeoSettings()]);
 
+  // These ids are interpolated into an inline <script>, so a malformed value
+  // is executable code rather than a broken tag. Validated, or dropped.
+  const gaId = safeAnalyticsId(seo?.ga_tracking_id, "ga");
+  const pixelId = safeAnalyticsId(seo?.fb_pixel_id, "pixel");
+
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body>
         <Providers settings={settings}>{children}</Providers>
 
         {/* Analytics tags are configured from /admin/seo. */}
-        {seo?.ga_tracking_id && (
+        {gaId && (
           <>
             <script
               async
-              src={`https://www.googletagmanager.com/gtag/js?id=${seo.ga_tracking_id}`}
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
             />
             <script
               dangerouslySetInnerHTML={{
-                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${seo.ga_tracking_id}');`,
+                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`,
               }}
             />
           </>
         )}
-        {seo?.fb_pixel_id && (
+        {pixelId && (
           <script
             dangerouslySetInnerHTML={{
-              __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${seo.fb_pixel_id}');fbq('track','PageView');`,
+              __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${pixelId}');fbq('track','PageView');`,
             }}
           />
         )}

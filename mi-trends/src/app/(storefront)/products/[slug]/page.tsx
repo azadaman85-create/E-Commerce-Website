@@ -15,6 +15,7 @@ import {
   getSiteSettings,
 } from "@/lib/queries";
 import { absoluteUrl, effectivePrice, stripHtml, truncate } from "@/lib/utils";
+import { jsonLd, sanitizeHtml } from "@/lib/sanitize";
 
 // ISR: product pages revalidate every 60s.
 export const revalidate = 60;
@@ -98,7 +99,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       content: product.description ? (
         <div
           className="prose-mitrends space-y-4 [&_p]:leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: product.description }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
         />
       ) : (
         <p>No description available.</p>
@@ -157,7 +158,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(productSchema) }}
       />
 
       <div className="container-page py-8 md:py-12">
