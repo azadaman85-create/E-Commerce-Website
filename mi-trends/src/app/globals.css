@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: "Inter", system-ui, sans-serif;
+    --font-playfair: "Playfair Display", Georgia, serif;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans;
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    line-height: 1.2;
+  }
+
+  /* Accessible focus ring — 2px offset ring in the accent colour. */
+  :focus-visible {
+    outline: 2px solid #2563EB;
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: #2563EB;
+    color: #fff;
+  }
+}
+
+@layer components {
+  /* Page shell: max 1440px, 64px desktop / 24px mobile horizontal padding. */
+  .container-page {
+    @apply mx-auto w-full max-w-content px-6 md:px-16;
+  }
+
+  .section-y {
+    @apply py-20 md:py-30;
+  }
+
+  .label-caps {
+    @apply text-caption uppercase tracking-[0.1em] text-muted;
+  }
+
+  .card-surface {
+    @apply rounded-sm border border-hairline bg-white shadow-card;
+  }
+
+  .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.04) 25%,
+      rgba(0, 0, 0, 0.08) 37%,
+      rgba(0, 0, 0, 0.04) 63%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-sm;
+  }
+
+  /* Shimmer sweep for primary CTAs — background-position shift on hover. */
+  .cta-shimmer {
+    background-image: linear-gradient(
+      110deg,
+      #2563eb 0%,
+      #2563eb 40%,
+      #4f83f1 50%,
+      #2563eb 60%,
+      #2563eb 100%
+    );
+    background-size: 220% 100%;
+    background-position: 100% 0;
+    transition: background-position 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+      background-color 0.2s ease;
+  }
+
+  .cta-shimmer:hover {
+    background-position: 0 0;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
