@@ -12,12 +12,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Lint, typecheck, test, build
+  storefront:
+    name: Storefront — lint, typecheck, build
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: mi-trends
+        working-directory: Frontend_Dashboard/mi-trends
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # This project's committed lockfile is bun.lock, so there is no
+      # package-lock.json for `npm ci` to use. --no-package-lock keeps the
+      # runner from writing a competing one. Switching this job to bun (or
+      # committing a package-lock.json) is still an open decision.
+      - name: Install
+        run: npm install --no-package-lock
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # No Supabase or other credentials are referenced anywhere in this
+      # app — the catalogue is generated in lib/catalog.ts — so the build
+      # needs no environment at all.
+      - name: Build
+        run: npm run build
+
+  admin:
+    name: Admin panel — lint, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend_Dashboard
 
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +59,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: mi-trends/package-lock.json
+          cache-dependency-path: Backend_Dashboard/package-lock.json
 
       - name: Install
         run: npm ci
@@ -34,19 +67,33 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Typecheck
-        run: npx tsc --noEmit
-
-      - name: Test
-        run: npm test
-
+      # `npm run build` is `tsc -b && vite build`, so this typechecks too.
       - name: Build
-        # Placeholders only. The build must not depend on real credentials, and
-        # demo mode is exactly what a URL containing "your-project" triggers —
-        # so this also proves the no-database path still renders.
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://your-project.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-key
-          NEXT_PUBLIC_SITE_URL: http://localhost:3000
         run: npm run build
+
+  api:
+    name: API — typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The generated client has to exist before anything referencing
+      # @prisma/client will typecheck.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck

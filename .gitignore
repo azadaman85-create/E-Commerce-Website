@@ -21,3 +21,7 @@
 # .gitignore; these are a backstop in case the project is ever moved up.
 node_modules/
 .next/
+
+# Local agent tooling (Higgsfield skills); .claude/skills symlinks into .agents/.
+.agents/
+.claude/

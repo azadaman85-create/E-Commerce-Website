@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  parentId String?
+  products Product[]
+}
+
+model Brand {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model Collection {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  tagline     String    @default("")
+  description String    @default("")
+  motif       String    @default("")
+  palette     String    @default("[]")
+  products    Product[]
+}
+
+model Product {
+  // Int so the storefront's numeric Product["id"] maps straight across.
+  id           Int      @id @default(autoincrement())
+  slug         String   @unique
+  name         String
+  sku          String
+  type         String
+  // men | women | unisex — the storefront calls this `category`.
+  audience     String   @default("unisex")
+  description  String   @default("")
+  mrp          Int
+  price        Int
+  discount     Int      @default(0)
+  fit          String   @default("")
+  fabric       String   @default("")
+  care         String   @default("")
+  sizeGuide    String   @default("")
+  art          String   @default("")
+  // JSON-encoded: SQLite has no array or json column type.
+  palette      String   @default("[]")
+  colors       String   @default("[]")
+  tags         String   @default("[]")
+  imageUrl     String?
+  backImageUrl String?
+  status       String   @default("active")
+  rating       Float    @default(0)
+  reviewCount  Int      @default(0)
+  popularity   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  categoryId   String?
+  category     Category?   @relation(fields: [categoryId], references: [id])
+  brandId      String?
+  brand        Brand?      @relation(fields: [brandId], references: [id])
+  collectionId String?
+  collection   Collection? @relation(fields: [collectionId], references: [id])
+
+  variants ProductVariant[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model ProductVariant {
+  id        String  @id @default(cuid())
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  color     String
+  sku       String
+  stock     Int     @default(0)
+  reserved  Int     @default(0)
+  threshold Int     @default(5)
+
+  @@index([productId])
+}
+
+model InventoryLog {
+  id           String   @id @default(cuid())
+  variantId    String
+  productName  String
+  variantLabel String
+  change       Int
+  reason       String
+  adjustedBy   String
+  date         DateTime @default(now())
+}
