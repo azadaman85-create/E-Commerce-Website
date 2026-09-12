@@ -7,7 +7,7 @@ import { ToastProvider } from './components/Toast.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <ToastProvider>
         <App />
       </ToastProvider>

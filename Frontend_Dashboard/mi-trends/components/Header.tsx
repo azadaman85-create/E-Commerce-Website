@@ -16,8 +16,6 @@ import { useStore } from "@/components/StoreProvider";
 const primaryLinks = [
   { label: "Men", href: "/shop?category=men", menu: true },
   { label: "Women", href: "/shop?category=women", menu: true },
-  { label: "Sneakers", href: "/shop?type=sneakers" },
-  { label: "Accessories", href: "/shop?type=accessories" },
   { label: "Collections", href: "/shop?browse=collections", menu: true },
   { label: "New", href: "/shop?tag=new" },
   { label: "Sale", href: "/shop?tag=sale", accent: true },
