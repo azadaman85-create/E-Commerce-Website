@@ -4,6 +4,7 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "./globals.css";
+import { CatalogProvider } from "@/components/CatalogProvider";
 import { StoreProvider } from "@/components/StoreProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -12,6 +13,7 @@ import SearchOverlay from "@/components/SearchOverlay";
 import MobileNav from "@/components/MobileNav";
 import MobileTabBar from "@/components/MobileTabBar";
 import Toast from "@/components/Toast";
+import { fetchCatalog } from "@/lib/api";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -30,20 +32,24 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const products = await fetchCatalog();
+
   return (
     <html lang="en">
       <body>
-        <StoreProvider>
-          <Header />
-          <main id="main-content">{children}</main>
-          <Footer />
-          <CartDrawer />
-          <SearchOverlay />
-          <MobileNav />
-          <MobileTabBar />
-          <Toast />
-        </StoreProvider>
+        <CatalogProvider products={products}>
+          <StoreProvider>
+            <Header />
+            <main id="main-content">{children}</main>
+            <Footer />
+            <CartDrawer />
+            <SearchOverlay />
+            <MobileNav />
+            <MobileTabBar />
+            <Toast />
+          </StoreProvider>
+        </CatalogProvider>
       </body>
     </html>
   );

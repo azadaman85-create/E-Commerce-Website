@@ -70,3 +70,30 @@ jobs:
       # `npm run build` is `tsc -b && vite build`, so this typechecks too.
       - name: Build
         run: npm run build
+
+  api:
+    name: API — typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # The generated client has to exist before anything referencing
+      # @prisma/client will typecheck.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck

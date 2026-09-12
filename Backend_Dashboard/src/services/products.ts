@@ -1,13 +1,7 @@
-import { COLLECTIONS, INVENTORY_LOGS, PRODUCTS, TAGS } from './mockData'
+import { api } from './http'
+import { TAGS } from './mockData'
 import { listCategories } from './categories'
 import type { InventoryLog, Product, ProductStatus } from '../types'
-
-function delay<T>(value: T, ms = 400): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), ms))
-}
-
-const products = [...PRODUCTS]
-const inventoryLogs = [...INVENTORY_LOGS]
 
 export interface ProductFilters {
   search?: string
@@ -17,8 +11,12 @@ export interface ProductFilters {
   maxPrice?: number
 }
 
+/**
+ * Filtering stays client-side: the catalogue is small enough that one request
+ * plus an in-memory filter beats a round trip per keystroke.
+ */
 export async function listProducts(filters: ProductFilters = {}): Promise<Product[]> {
-  let result = [...products]
+  let result = await api<Product[]>('/api/admin/products')
 
   if (filters.search) {
     const q = filters.search.toLowerCase()
@@ -39,11 +37,15 @@ export async function listProducts(filters: ProductFilters = {}): Promise<Produc
     result = result.filter((p) => (p.salePrice ?? p.price) <= filters.maxPrice!)
   }
 
-  return delay(result)
+  return result
 }
 
 export async function getProduct(id: string): Promise<Product | undefined> {
-  return delay(products.find((p) => p.id === id))
+  try {
+    return await api<Product>(`/api/admin/products/${id}`)
+  } catch {
+    return undefined
+  }
 }
 
 export async function getCategories() {
@@ -51,52 +53,54 @@ export async function getCategories() {
 }
 
 export async function getCollections() {
-  return delay(COLLECTIONS)
+  return api<{ id: string; name: string; slug: string; productCount: number }[]>(
+    '/api/admin/collections',
+  )
 }
 
+// Tags are still a fixed vocabulary rather than a managed table.
 export async function getTags() {
-  return delay(TAGS)
+  return Promise.resolve(TAGS)
 }
 
 export async function setProductStatus(id: string, status: ProductStatus): Promise<Product> {
-  const product = products.find((p) => p.id === id)
-  if (!product) throw new Error('Product not found')
-  product.status = status
-  return delay(product)
+  return api<Product>(`/api/admin/products/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
 }
 
 export async function duplicateProduct(id: string): Promise<Product> {
-  const source = products.find((p) => p.id === id)
-  if (!source) throw new Error('Product not found')
-  const copy: Product = {
-    ...source,
-    id: `${source.id}-copy-${Date.now()}`,
-    name: `${source.name} (Copy)`,
-    status: 'draft',
-    createdAt: new Date().toISOString().slice(0, 10),
-  }
-  products.unshift(copy)
-  return delay(copy)
+  const source = await api<Product>(`/api/admin/products/${id}`)
+  return api<Product>('/api/admin/products', {
+    method: 'POST',
+    body: JSON.stringify({ ...source, id: undefined, name: `${source.name} (Copy)`, status: 'draft' }),
+  })
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  const index = products.findIndex((p) => p.id === id)
-  if (index !== -1) products.splice(index, 1)
-  return delay(undefined)
+  await api<void>(`/api/admin/products/${id}`, { method: 'DELETE' })
 }
 
+/** An id that is not yet on the server means this is a create, not an update. */
 export async function saveProduct(product: Product): Promise<Product> {
-  const index = products.findIndex((p) => p.id === product.id)
-  if (index === -1) {
-    products.unshift(product)
-  } else {
-    products[index] = product
+  const existing = product.id ? await getProduct(product.id) : undefined
+
+  if (!existing) {
+    return api<Product>('/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify(product),
+    })
   }
-  return delay(product)
+
+  return api<Product>(`/api/admin/products/${product.id}`, {
+    method: 'PUT',
+    body: JSON.stringify(product),
+  })
 }
 
 export async function getInventoryLogs(): Promise<InventoryLog[]> {
-  return delay([...inventoryLogs].sort((a, b) => (a.date < b.date ? 1 : -1)))
+  return api<InventoryLog[]>('/api/admin/inventory/logs')
 }
 
 export async function adjustStock(
@@ -107,24 +111,9 @@ export async function adjustStock(
   reason: string,
   adjustedBy: string,
 ): Promise<InventoryLog> {
-  for (const product of products) {
-    const variant = product.variants.find((v) => v.id === variantId)
-    if (variant) {
-      variant.stock = Math.max(0, variant.stock + change)
-      break
-    }
-  }
-
-  const log: InventoryLog = {
-    id: `log-${Date.now()}`,
-    variantId,
-    productName,
-    variantLabel,
-    change,
-    reason,
-    adjustedBy,
-    date: new Date().toISOString().slice(0, 10),
-  }
-  inventoryLogs.unshift(log)
-  return delay(log)
+  const result = await api<{ log: InventoryLog }>(`/api/admin/inventory/${variantId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ change, reason, adjustedBy, productName, variantLabel }),
+  })
+  return result.log
 }

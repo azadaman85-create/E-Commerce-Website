@@ -17,7 +17,8 @@ import {
   Star,
   Truck,
 } from "lucide-react";
-import { products } from "@/lib/catalog";
+import { useCatalog } from "@/components/CatalogProvider";
+import type { Product } from "@/lib/types";
 import { ProductVisual } from "@/components/ProductVisual";
 import { ProductCard } from "@/components/ProductCard";
 import { useStore } from "@/components/StoreProvider";
@@ -27,6 +28,7 @@ const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR
 const views = ["Front", "Back", "Print detail", "Styled"];
 
 export default function ProductPage() {
+  const products = useCatalog();
   const params = useParams<{ slug: string }>();
   const product = products.find((item) => item.slug === params.slug);
 
@@ -51,7 +53,8 @@ export default function ProductPage() {
   return <ProductDetails key={product.id} product={product} />;
 }
 
-function ProductDetails({ product }: { product: (typeof products)[number] }) {
+function ProductDetails({ product }: { product: Product }) {
+  const products = useCatalog();
   const router = useRouter();
   const store = useStore();
   const [activeView, setActiveView] = useState(0);
@@ -68,7 +71,7 @@ function ProductDetails({ product }: { product: (typeof products)[number] }) {
     const related = products.filter((item) => item.id !== product.id && (item.collection === product.collection || item.type === product.type));
     const fallback = products.filter((item) => item.id !== product.id && !related.includes(item));
     return [...related, ...fallback].slice(0, 4);
-  }, [product]);
+  }, [product, products]);
 
   const currentColor = product.colors[selectedColor] || product.colors[0];
   const saved = store.isWishlisted(product);

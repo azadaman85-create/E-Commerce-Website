@@ -15,7 +15,7 @@ import {
   Truck,
   WalletCards,
 } from "lucide-react";
-import { products } from "@/lib/catalog";
+import { useCatalog } from "@/components/CatalogProvider";
 import { ProductCard } from "@/components/ProductCard";
 import { useStore } from "@/components/StoreProvider";
 
@@ -152,6 +152,7 @@ function SectionHeading({ eyebrow, title, href, linkLabel = "View all" }: { eyeb
 }
 
 export default function HomePage() {
+  const products = useCatalog();
   const { showToast } = useStore();
   const [activeSlide, setActiveSlide] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -159,13 +160,13 @@ export default function HomePage() {
   const [copiedCoupon, setCopiedCoupon] = useState(false);
   const touchStart = useRef<number | null>(null);
 
-  const trending = useMemo(() => [...products].sort((a, b) => b.popularity - a.popularity).slice(0, 9), []);
-  const newDrops = useMemo(() => products.filter((product) => product.tags.includes("new")).slice(0, 8), []);
+  const trending = useMemo(() => [...products].sort((a, b) => b.popularity - a.popularity).slice(0, 9), [products]);
+  const newDrops = useMemo(() => products.filter((product) => product.tags.includes("new")).slice(0, 8), [products]);
   const deals = useMemo(() => {
     const under = products.filter((product) => product.price <= 799);
     return (under.length >= 6 ? under : [...products].sort((a, b) => a.price - b.price)).slice(0, 9);
-  }, []);
-  const oversized = useMemo(() => products.filter((product) => product.type === "oversized-tees").slice(0, 8), []);
+  }, [products]);
+  const oversized = useMemo(() => products.filter((product) => product.type === "oversized-tees").slice(0, 8), [products]);
 
   const activeFeedProducts = useMemo(() => {
     switch (activeFeedTab) {

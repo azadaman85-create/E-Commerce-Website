@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { products } from "@/lib/catalog";
+import { useCatalog } from "@/components/CatalogProvider";
 import type { CartLine, Product, ProductColor } from "@/lib/types";
 
 export type ToastTone = "success" | "error" | "info";
@@ -106,6 +106,7 @@ export function calculateCouponDiscount(code: string | null, subtotal: number) {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const products = useCatalog();
   const [cartLines, setCartLines] = useState<CartLine[]>([]);
   const [wishlistIds, setWishlistIds] = useState<number[]>([]);
   const [couponCode, setCouponCode] = useState<string | null>(null);
@@ -295,7 +296,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         exists ? "info" : "success",
       );
     },
-    [showToast, wishlistIds],
+    [showToast, wishlistIds, products],
   );
 
   const isWishlisted = useCallback(

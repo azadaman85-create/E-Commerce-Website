@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, Search, TrendingUp, X } from "lucide-react";
 
 import { useStore } from "@/components/StoreProvider";
-import { products } from "@/lib/catalog";
+import { useCatalog } from "@/components/CatalogProvider";
 import { money } from "@/lib/format";
 
 const trendingSearches = [
@@ -43,6 +43,7 @@ export function SearchOverlay() {
 }
 
 function SearchModal({ closeSearch }: { closeSearch: () => void }) {
+  const products = useCatalog();
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -67,7 +68,7 @@ function SearchModal({ closeSearch }: { closeSearch: () => void }) {
         .toLowerCase();
       return searchableText.includes(normalizedQuery);
     });
-  }, [normalizedQuery]);
+  }, [normalizedQuery, products]);
 
   useEffect(() => {
     const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 0);

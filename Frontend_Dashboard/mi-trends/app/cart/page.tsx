@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Minus, Plus, ShieldCheck, ShoppingBag, Tag, Trash2, Truck } from "lucide-react";
-import { products } from "@/lib/catalog";
+import { useCatalog } from "@/components/CatalogProvider";
 import { ProductVisual } from "@/components/ProductVisual";
 import { ProductCard } from "@/components/ProductCard";
 import { useStore } from "@/components/StoreProvider";
@@ -12,6 +12,7 @@ const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR
 const FREE_SHIPPING = 999;
 
 export default function CartPage() {
+  const products = useCatalog();
   const store = useStore();
   const [couponInput, setCouponInput] = useState(store.couponCode || "");
   const [couponMessage, setCouponMessage] = useState("");
@@ -25,7 +26,7 @@ export default function CartPage() {
   const remaining = Math.max(0, FREE_SHIPPING - subtotal);
   const progress = Math.min(100, (subtotal / FREE_SHIPPING) * 100);
 
-  const suggestions = useMemo(() => products.filter((product) => !cart.some((line) => line.product.id === product.id)).slice(0, 4), [cart]);
+  const suggestions = useMemo(() => products.filter((product) => !cart.some((line) => line.product.id === product.id)).slice(0, 4), [cart, products]);
 
   const applyCoupon = () => {
     const value = couponInput.trim().toUpperCase();

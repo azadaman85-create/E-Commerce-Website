@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
-import { products } from "@/lib/catalog";
+import { useCatalog } from "@/components/CatalogProvider";
 import { ProductCard } from "@/components/ProductCard";
 
 type SortKey = "popular" | "newest" | "price-asc" | "price-desc" | "discount" | "rating";
@@ -30,6 +30,7 @@ function toggleValue(list: string[], value: string) {
 }
 
 function ShopContent() {
+  const products = useCatalog();
   const searchParams = useSearchParams();
   const query = (searchParams.get("q") || "").trim();
   const initialCategory = (searchParams.get("category") || searchParams.get("gender") || "").toLowerCase();
@@ -44,13 +45,13 @@ function ShopContent() {
   const [discount, setDiscount] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const productTypes = useMemo(() => [...new Set(products.map((product) => product.type))], []);
-  const collectionNames = useMemo(() => [...new Set(products.map((product) => product.collection))], []);
+  const productTypes = useMemo(() => [...new Set(products.map((product) => product.type))], [products]);
+  const collectionNames = useMemo(() => [...new Set(products.map((product) => product.collection))], [products]);
   const allSizes = useMemo(() => {
     const preferred = ["XS", "S", "M", "L", "XL", "XXL", "28", "30", "32", "34", "36", "38", "UK6", "UK7", "UK8", "UK9", "UK10", "UK11", "Free size"];
     const available = new Set(products.flatMap((product) => product.sizes));
     return preferred.filter((size) => available.has(size));
-  }, []);
+  }, [products]);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -88,7 +89,7 @@ function ShopContent() {
       if (sort === "rating") return b.rating - a.rating;
       return b.popularity - a.popularity;
     });
-  }, [query, initialCategory, initialTag, types, collections, sizes, priceBand, discount, sort]);
+  }, [query, initialCategory, initialTag, types, collections, sizes, priceBand, discount, sort, products]);
 
   const clearAll = () => {
     setTypes([]);
