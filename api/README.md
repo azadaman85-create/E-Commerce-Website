@@ -9,6 +9,7 @@ The server both front-ends talk to. Express + Prisma + SQLite.
 ## First run
 
 ```bash
+cp .env.example .env
 npm install
 npm run setup     # creates the database, then seeds it
 npm run dev       # http://localhost:4000
