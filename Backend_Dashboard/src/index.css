@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  /* Editorial boutique palette: warm bone ground, near-black ink, deep burgundy accent, muted status tones */
+  --color-bone: #f6f1e7;
+  --color-bone-soft: #fbf8f2;
+  --color-bone-deep: #ece3d2;
+
+  --color-ink: #201c18;
+  --color-ink-soft: #6b6459;
+  --color-ink-faint: #a89f8f;
+
+  --color-border: #e4dcc9;
+
+  --color-accent: #6b2737;
+  --color-accent-soft: #f3e6e6;
+  --color-accent-hover: #551e2b;
+
+  --color-sage: #7c8b6f;
+  --color-sage-soft: #eaeee4;
+
+  --color-ochre: #b8873d;
+  --color-ochre-soft: #f6ecd8;
+
+  --color-rust: #a6503a;
+  --color-rust-soft: #f5e5df;
+
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* shadcn-style semantic tokens, mapped onto the brand palette above so
+     shadcn/ui primitives (Input, Button, etc.) resolve out of the box */
+  --color-background: var(--color-bone);
+  --color-foreground: var(--color-ink);
+  --color-muted: var(--color-bone-deep);
+  --color-muted-foreground: var(--color-ink-soft);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-accent);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: var(--color-bone-soft);
+  --color-destructive: var(--color-rust);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* @layer base/components so Tailwind utility classes (which Tailwind itself
+   emits inside cascade layers) can still override these — unlayered rules
+   always beat layered ones regardless of specificity, which previously made
+   e.g. text-bone-soft on an <h1> lose to this file's own plain CSS. */
+@layer base {
+  body {
+    margin: 0;
+    background-color: var(--color-bone);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    color: var(--color-ink);
+    margin: 0;
+  }
+}
+
+@layer components {
+  .input {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bone);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: var(--color-ink);
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 1px var(--color-accent);
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #invoice-print-area,
+  #invoice-print-area * {
+    visibility: visible !important;
+  }
+  #invoice-print-area {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 32px !important;
+    margin: 0 !important;
+    background: #fff !important;
+    z-index: 9999 !important;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
