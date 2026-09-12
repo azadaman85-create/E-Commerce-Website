@@ -115,14 +115,14 @@ function ProductDetails({ product }: { product: (typeof products)[number] }) {
               const v = index === 0 ? "front" : index === 1 ? "back" : index === 2 ? "detail" : "flat";
               return (
                 <button key={view} className={activeView === index ? "active" : ""} type="button" onClick={() => setActiveView(index)} aria-label={`View ${view.toLowerCase()}`}>
-                  <ProductVisual product={product} view={v as any} />
+                  <ProductVisual product={product} view={v} />
                   <span>{view}</span>
                 </button>
               );
             })}
           </div>
           <div className={`hero-visual view-${activeView}`}>
-            <ProductVisual product={product} view={(activeView === 0 ? "front" : activeView === 1 ? "back" : activeView === 2 ? "detail" : "flat") as any} />
+            <ProductVisual product={product} view={activeView === 0 ? "front" : activeView === 1 ? "back" : activeView === 2 ? "detail" : "flat"} />
             <span className="view-label">{views[activeView]}</span>
             {product.tags[0] && <span className="product-badge">{product.tags[0]}</span>}
             <button className={`gallery-heart ${saved ? "saved" : ""}`} type="button" onClick={() => store.toggleWishlist(product)} aria-label={saved ? "Remove from wishlist" : "Add to wishlist"}>
